@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>自製刮刮樂</title>
+<style>
+body {
+  font-family: sans-serif;
+  margin: 0;
+  background: #f5f5f5;
+}
+
+.container {
+  padding: 16px;
+  max-width: 900px;
+  margin: auto;
+}
+
+.card {
+  background: white;
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+input, button {
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+}
+
+button {
+  background: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 8px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 10px;
+}
+
+.slot {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #ccc;
+}
+
+.slot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.hidden {
+  display: none;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<div id="editor" class="card">
+<h2>自製刮刮樂編輯器</h2>
+
+洞數
+<input id="count" type="number" value="9" min="1" max="50">
+
+獎品（用逗號分隔）
+<input id="items" placeholder="例如：100,200,蘋果,A,B,1">
+
+圖片（可選）
+<input id="images" type="file" multiple accept="image/*">
+
+<button onclick="build()">生成刮刮樂</button>
+</div>
+
+<div id="game" class="card hidden">
+<h2>刮刮樂遊戲</h2>
+<div id="grid" class="grid"></div>
+<button onclick="reset()">返回編輯</button>
+</div>
+
+</div>
+
+<script>
+let data = [];
+
+function build(){
+  let count = +document.getElementById('count').value;
+  let items = document.getElementById('items').value.split(',');
+  let files = document.getElementById('images').files;
+
+  data = [];
+
+  for(let i=0;i<count;i++){
+    data.push({
+      text: items[i % items.length] || '',
+      img: files[i % files.length] ? URL.createObjectURL(files[i % files.length]) : null
+    });
+  }
+
+  document.getElementById('editor').classList.add('hidden');
+  document.getElementById('game').classList.remove('hidden');
+
+  render();
+}
+
+function render(){
+  let grid = document.getElementById('grid');
+  grid.innerHTML = '';
+
+  data.forEach(d => {
+    let div = document.createElement('div');
+    div.className = 'slot';
+
+    if(d.img){
+      let img = document.createElement('img');
+      img.src = d.img;
+      div.appendChild(img);
+    }
+
+    let t = document.createElement('div');
+    t.className = 'text';
+    t.innerText = d.text;
+    div.appendChild(t);
+
+    let c = document.createElement('canvas');
+    c.width = 80;
+    c.height = 80;
+    div.appendChild(c);
+
+    let ctx = c.getContext('2d');
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0,0,80,80);
+
+    let down = false;
+
+    function scratch(e){
+      if(!down) return;
+      let r = c.getBoundingClientRect();
+      let x = (e.touches?e.touches[0].clientX:e.clientX)-r.left;
+      let y = (e.touches?e.touches[0].clientY:e.clientY)-r.top;
+
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.beginPath();
+      ctx.arc(x,y,12,0,Math.PI*2);
+      ctx.fill();
+    }
+
+    c.addEventListener('mousedown',()=>down=true);
+    c.addEventListener('mouseup',()=>down=false);
+    c.addEventListener('mousemove',scratch);
+
+    c.addEventListener('touchstart',()=>down=true);
+    c.addEventListener('touchend',()=>down=false);
+    c.addEventListener('touchmove',scratch);
+
+    grid.appendChild(div);
+  });
+}
+
+function reset(){
+  document.getElementById('editor').classList.remove('hidden');
+  document.getElementById('game').classList.add('hidden');
+}
+</script>
+
+</body>
+</html>
